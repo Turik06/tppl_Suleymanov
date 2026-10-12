@@ -1,4 +1,5 @@
 import math
+import sys
 from typing import List, Union
 
 Number = Union[int, float]
@@ -109,3 +110,23 @@ def evaluate_postfix(expression: str, verbose: bool = True) -> Number:
         )
 
     return stack[0]
+
+
+def main() -> None:
+    if len(sys.argv) < 2:
+        print("Использование: python postfix_notation/main.py \"<выражение>\"")
+        print("Пример: python postfix_notation/main.py \"3 0 4 ~ 2 ~\"")
+        sys.exit(1)
+
+    expression = " ".join(sys.argv[1:])
+    try:
+        result = evaluate_postfix(expression, verbose=True)
+        formatted_result = format_num(result)
+        print(f"{expression} = {formatted_result}")
+    except CaringStackMachineError as err:
+        print(f"Ошибка вычисления: {err}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
