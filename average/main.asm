@@ -3,103 +3,107 @@ global    main
 default   rel
 extern    printf
 
-BUFFER_SIZE equ 65536
+BUFFER_SIZE equ 65536                   ; размер буфера для чтения файла (64 КБ)
 
 main:
         push  rbp
         mov   rbp, rsp
-        push  rbx
-        push  r12
+        push  rbx                       ; сохраняем регистры rbx и r12 на стеке,
+        push  r12                       ; так как они должны сохраняться между вызовами функций
 
+        ; Проверка аргументов командной строки:
+        ; rdi содержит argc (количество аргументов), argv[0] — имя программы, argv[1] — файл
         cmp   rdi, 2
-        jl    no_args
+        jl    no_args                   ; если argc < 2 (файл не указан), выводим справку
 
+        ; Извлекаем указатель на имя файла (argv[1]):
+        ; rsi указывает на массив argv, каждый указатель занимает 8 байт (rsi + 8 = argv[1])
         mov   rax, [rsi + 8]
         mov   [filename], rax
 
-        ; --- Открытие файла (sys_open, шаблон из contex/read-file.asm) ---
-        mov   rax, 2
-        mov   rdi, [filename]
-        xor   rsi, rsi
-        xor   rdx, rdx
-        syscall
-        test  rax, rax
-        js    open_error
-        mov   [fd], rax
+        ; --- Открытие файла (системный вызов sys_open) ---
+        mov   rax, 2                    ; номер системного вызова 2 = sys_open
+        mov   rdi, [filename]           ; 1-й аргумент: путь к файлу
+        xor   rsi, rsi                  ; 2-й аргумент: флаги открытия (0 = O_RDONLY, только чтение)
+        xor   rdx, rdx                  ; 3-й аргумент: режим доступа (0)
+        syscall                         ; вызов ядра ОС
+        test  rax, rax                  ; проверяем результат sys_open
+        js    open_error                ; если rax < 0 (код ошибки), файл открыть не удалось
+        mov   [fd], rax                 ; сохраняем полученный дескриптор файла
 
-        ; --- Чтение файла в буфер (sys_read, шаблон из contex/read-file.asm) ---
-        mov   rax, 0
-        mov   rdi, [fd]
-        mov   rsi, buffer
-        mov   rdx, BUFFER_SIZE
+        ; --- Чтение файла в буфер (системный вызов sys_read) ---
+        mov   rax, 0                    ; номер системного вызова 0 = sys_read
+        mov   rdi, [fd]                 ; 1-й аргумент: дескриптор файла
+        mov   rsi, buffer               ; 2-й аргумент: адрес буфера в памяти
+        mov   rdx, BUFFER_SIZE          ; 3-й аргумент: сколько байт читать максимум
         syscall
-        test  rax, rax
-        jle   read_error
-        mov   [bytes_read], rax
+        test  rax, rax                  ; проверяем количество прочитанных байт
+        jle   read_error                ; если <= 0 (ошибка или пустой файл), завершаем с ошибкой
+        mov   [bytes_read], rax         ; сохраняем число прочитанных байт
 
-        ; --- Закрытие файла (sys_close, шаблон из contex/read-file.asm) ---
-        mov   rax, 3
-        mov   rdi, [fd]
+        ; --- Закрытие файла (системный вызов sys_close) ---
+        mov   rax, 3                    ; номер системного вызова 3 = sys_close
+        mov   rdi, [fd]                 ; дескриптор закрываемого файла
         syscall
 
-        ; --- Разбор строк на лету без массивов (алгоритм от товарища) ---
-        mov   rsi, buffer               ; rsi = начало данных
+        ; --- Разбор чисел на лету (без выделения массивов в памяти) ---
+        mov   rsi, buffer               ; rsi = указатель на текущую позицию чтения
         mov   rdi, buffer
-        add   rdi, [bytes_read]         ; rdi = конец прочитанных данных
+        add   rdi, [bytes_read]         ; rdi = указатель на конец прочитанных данных
 
-        call  parse_line                ; первая строка (x)
-        jc    format_error
-        mov   rbx, rax                  ; rbx = сумма x
-        mov   r12, rcx                  ; r12 = количество чисел x
+        call  parse_line                ; разбираем первую строку (числа X)
+        jc    format_error              ; если флаг CF=1 — произошла ошибка в формате строки
+        mov   rbx, rax                  ; rbx = сумма чисел первой строки
+        mov   r12, rcx                  ; r12 = количество чисел первой строки
 
-        call  parse_line                ; вторая строка (y); rsi уже указывает на её начало
+        call  parse_line                ; разбираем вторую строку (числа Y); rsi указывает на её начало
         jc    format_error
-        cmp   rcx, r12                  ; количество чисел должно совпадать
+        cmp   rcx, r12                  ; проверяем, совпадает ли количество чисел в двух строках
         jne   format_error
-        sub   rbx, rax                  ; rbx = (сумма x) - (сумма y) = сумма разностей
+        sub   rbx, rax                  ; rbx = (сумма X) - (сумма Y) = сумма разностей (X_i - Y_i)
 
-        ; Проверяем хвост файла: допустимы только пробелы, табы и переносы строк
+        ; Проверяем хвост файла: после 2-й строки допустимы только пробелы, табы и переносы строк
 .trail:
-        cmp   rsi, rdi
-        jae   .compute
-        mov   r10b, [rsi]
-        inc   rsi
-        cmp   r10b, ' '
+        cmp   rsi, rdi                  ; дошли ли до конца файла?
+        jae   .compute                  ; если да, переходим к вычислению результата
+        mov   r10b, [rsi]               ; читаем очередной байт
+        inc   rsi                       ; сдвигаем указатель вперед
+        cmp   r10b, ' '                 ; пробел
         je    .trail
-        cmp   r10b, 9
+        cmp   r10b, 9                   ; символ табуляции '\t'
         je    .trail
-        cmp   r10b, 10
+        cmp   r10b, 10                  ; символ перевода строки '\n'
         je    .trail
-        cmp   r10b, 13
+        cmp   r10b, 13                  ; символ возврата каретки '\r'
         je    .trail
-        jmp   format_error
+        jmp   format_error              ; любой другой символ в конце считается ошибкой формата
 
 .compute:
         mov   rax, rbx                  ; делимое = сумма разностей
-        cqo                             ; знаковое расширение rax в rdx:rax
-        idiv  r12                       ; rax = среднее = sum / count
+        cqo                             ; знаковое расширение 64-битного rax в 128-битную пару rdx:rax
+        idiv  r12                       ; знаковое деление rdx:rax на r12 (количество чисел): rax = rbx / r12
 
-        ; --- Вывод результата через printf (из contex/printf-example.asm) ---
-        mov   rdi, fmt_result
-        mov   rsi, [filename]
-        mov   rdx, rax
-        xor   rax, rax
+        ; --- Вывод результата через библиотечную функцию printf ---
+        mov   rdi, fmt_result           ; 1-й аргумент: строка формата "%s: %ld\n"
+        mov   rsi, [filename]           ; 2-й аргумент: имя файла
+        mov   rdx, rax                  ; 3-й аргумент: вычисленное среднее значение
+        xor   rax, rax                  ; для printf: 0 аргументов с плавающей точкой
         call  printf
 
-        pop   r12
+        pop   r12                       ; восстанавливаем сохраненные регистры
         pop   rbx
         pop   rbp
-        xor   eax, eax
+        xor   eax, eax                  ; код возврата 0 (успех)
         ret
 
 read_error:
-        mov   rax, 3                    ; sys_close перед выходом
+        mov   rax, 3                    ; закрываем файл (sys_close) перед выходом при ошибке чтения
         mov   rdi, [fd]
         syscall
 
 open_error:
 format_error:
-        mov   rdi, fmt_error
+        mov   rdi, fmt_error            ; вывод сообщения об ошибке: "%s: файл испорчен\n"
         mov   rsi, [filename]
         xor   rax, rax
         call  printf
@@ -107,122 +111,126 @@ format_error:
         pop   r12
         pop   rbx
         pop   rbp
-        mov   eax, 1
+        mov   eax, 1                    ; код возврата 1 (ошибка)
         ret
 
 no_args:
-        mov   rdi, fmt_usage
+        mov   rdi, fmt_usage            ; вывод подсказки: "Usage: ./average <filename>\n"
         xor   rax, rax
         call  printf
 
         pop   r12
         pop   rbx
         pop   rbp
-        mov   eax, 1
+        mov   eax, 1                    ; код возврата 1 (ошибка)
         ret
 
 ; ---------------------------------------------------------------------------
-; skip_ws: пропускает пробелы, табы и '\r' (но не '\n': это конец строки)
-;   вход:  rsi = текущая позиция, rdi = конец данных
-;   выход: rsi сдвинут на первый непробельный символ (или равен rdi)
-;   портит: r10
+; skip_ws: пропускает пробелы, табуляции и '\r' (но не '\n', т.к. это конец строки)
+;   Вход:   rsi = текущая позиция в буфере, rdi = конец буфера
+;   Выход:  rsi указывает на первый непробельный символ (или rsi == rdi)
+;   Портит: r10
+; ---------------------------------------------------------------------------
 skip_ws:
 .loop:
-        cmp   rsi, rdi
+        cmp   rsi, rdi                  ; достигнут конец буфера?
         jae   .done
-        mov   r10b, [rsi]
-        cmp   r10b, ' '
+        mov   r10b, [rsi]               ; читаем символ
+        cmp   r10b, ' '                 ; пробел?
         je    .skip
-        cmp   r10b, 9
+        cmp   r10b, 9                   ; табуляция?
         je    .skip
-        cmp   r10b, 13
-        jne   .done
+        cmp   r10b, 13                  ; возврат каретки '\r'?
+        jne   .done                     ; если другой символ (включая '\n') — завершаем пропуск
 .skip:
-        inc   rsi
+        inc   rsi                       ; сдвигаем указатель
         jmp   .loop
 .done:
         ret
 
 ; ---------------------------------------------------------------------------
-; parse_line: разбирает одну строку чисел через запятую на лету
-;   вход:  rsi = начало строки, rdi = конец данных
-;   выход: rax = сумма чисел, rcx = сколько чисел, rsi = позиция после '\n'
-;          CF = 1 при ошибке (иначе CF = 0)
-;   портит: rdx, r8, r9, r10
+; parse_line: разбирает строку чисел через запятую и суммирует их на лету
+;   Вход:   rsi = начало строки, rdi = конец буфера
+;   Выход:  rax = сумма всех чисел в строке
+;           rcx = количество найденных чисел
+;           rsi = позиция сразу после '\n' (или конец буфера)
+;           Флаг переноса (CF): 0 = успех, 1 = ошибка формата
+;   Портит: rdx, r8, r9, r10
+; ---------------------------------------------------------------------------
 parse_line:
-        xor   rax, rax                  ; rax = сумма чисел
-        xor   rcx, rcx                  ; rcx = количество чисел
+        xor   rax, rax                  ; rax = 0 (аккумулятор суммы чисел строки)
+        xor   rcx, rcx                  ; rcx = 0 (счетчик количества чисел)
 
 .next_number:
-        call  skip_ws
+        call  skip_ws                   ; пропускаем пробелы перед числом
         cmp   rsi, rdi
-        jae   .error                    ; ждали число, но данные закончились
+        jae   .error                    ; если данные внезапно закончились — ошибка
 
-        xor   r8, r8                    ; r8 = 1 если число отрицательное
+        xor   r8, r8                    ; r8 = признак отрицательного числа (0 = "+", 1 = "-")
         cmp   byte [rsi], '-'
         jne   .check_plus
-        mov   r8, 1
-        inc   rsi
+        mov   r8, 1                     ; встретили минус: отмечаем флаг знака
+        inc   rsi                       ; пропускаем символ '-'
         jmp   .digits
 
 .check_plus:
         cmp   byte [rsi], '+'
         jne   .digits
-        inc   rsi
+        inc   rsi                       ; встретили плюс: просто пропускаем символ '+'
 
 .digits:
-        xor   rdx, rdx                  ; rdx = значение числа
-        xor   r9, r9                    ; r9 = количество цифр
+        xor   rdx, rdx                  ; rdx = 0 (значение текущего собираемого числа)
+        xor   r9, r9                    ; r9 = 0 (счетчик прочитанных цифр)
 .digit_loop:
         cmp   rsi, rdi
-        jae   .digits_done
-        movzx r10, byte [rsi]
-        sub   r10, '0'
+        jae   .digits_done              ; конец буфера — завершаем чтение цифр
+        movzx r10, byte [rsi]           ; загружаем ASCII-код символа с расширением нулями в r10
+        sub   r10, '0'                  ; переводим символ в цифру (код '0' превращается в 0)
         cmp   r10, 9
-        ja    .digits_done
-        imul  rdx, rdx, 10
-        add   rdx, r10
-        inc   rsi
-        inc   r9
+        ja    .digits_done              ; если значение > 9, значит символ не является цифрой
+        imul  rdx, rdx, 10              ; rdx = rdx * 10 (сдвигаем разряд числа влево)
+        add   rdx, r10                  ; прибавляем новую цифру: rdx = rdx * 10 + digit
+        inc   rsi                       ; переходим к следующему символу
+        inc   r9                        ; увеличиваем количество прочитанных цифр
         jmp   .digit_loop
 
 .digits_done:
-        test  r9, r9                    ; была хотя бы одна цифра?
-        jz    .error
-        test  r8, r8
+        test  r9, r9                    ; была ли прочитана хотя бы одна цифра?
+        jz    .error                    ; если цифр не было (например, только знак) — ошибка
+        test  r8, r8                    ; проверяем, стоял ли знак минус
         jz    .add
-        neg   rdx
+        neg   rdx                       ; если был минус: rdx = -rdx (инвертируем знак числа)
 
 .add:
-        add   rax, rdx                  ; прибавляем к общей сумме
-        inc   rcx                       ; считаем число
-        call  skip_ws
+        add   rax, rdx                  ; прибавляем число к общей сумме строки
+        inc   rcx                       ; увеличиваем счетчик чисел
+        call  skip_ws                   ; пропускаем пробелы после числа
         cmp   rsi, rdi
-        jae   .ok                       ; конец файла без '\n'
+        jae   .ok                       ; если достигнут конец файла без перевода строки — успех
 
-        mov   r10b, [rsi]
-        inc   rsi
+        mov   r10b, [rsi]               ; читаем разделитель
+        inc   rsi                       ; сдвигаем указатель
         cmp   r10b, ','
-        je    .next_number
-        cmp   r10b, 10                  ; '\n'
-        je    .ok
+        je    .next_number              ; если запятая — переходим к парсингу следующего числа
+        cmp   r10b, 10                  ; код 10 = '\n' (перевод строки)
+        je    .ok                       ; если конец строки — успешно завершаем разбор
 
 .error:
-        stc
+        stc                             ; Set Carry Flag (CF = 1) — признак ошибки
         ret
 
 .ok:
-        clc
+        clc                             ; Clear Carry Flag (CF = 0) — признак успеха
         ret
 
 ; ---------------------------------------------------------------------------
 section   .data
-        fmt_result  db "%s: %ld", 10, 0
-        fmt_error   db "%s: файл испорчен", 10, 0
-        fmt_usage   db "Usage: ./average <filename>", 10, 0
+        fmt_result  db "%s: %ld", 10, 0              ; шаблон вывода: "<файл>: <среднее>\n"
+        fmt_error   db "%s: файл испорчен", 10, 0    ; сообщение при некорректных данных
+        fmt_usage   db "Usage: ./average <filename>", 10, 0 ; сообщение о правильном вызове
 
 section   .bss
-        fd          resq 1
-        filename    resq 1
-        bytes_read  resq 1
-        buffer      resb BUFFER_SIZE
+        fd          resq 1                           ; переменная для дескриптора файла
+        filename    resq 1                           ; указатель на строку с именем файла
+        bytes_read  resq 1                           ; количество фактически прочитанных байт
+        buffer      resb BUFFER_SIZE                 ; буфер в памяти под прочитанный файл
