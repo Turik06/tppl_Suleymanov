@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 180" width="100%" height="100%">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#1f2328" />
+    </marker>
+  </defs>
+
+  <!-- Step 1: Исходный код -->
+  <g transform="translate(10, 25)">
+    <rect width="180" height="120" rx="6" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1.5"/>
+    <text x="90" y="32" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="14" font-weight="bold" fill="#000" text-anchor="middle">Исходный код</text>
+    <line x1="20" y1="44" x2="160" y2="44" stroke="#eaeef2" stroke-width="1"/>
+    <text x="90" y="70" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13" fill="#1f2328" text-anchor="middle">C / C++ / Rust</text>
+    <text x="90" y="92" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13" fill="#1f2328" text-anchor="middle">Go / Zig / Swift</text>
+    <text x="90" y="118" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" fill="#59636e" text-anchor="middle">math.c (100% C)</text>
+  </g>
+
+  <!-- Стрелка 1 -->
+  <path d="M 195 85 L 245 85" stroke="#1f2328" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="220" y="75" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10" fill="#59636e" text-anchor="middle">Clang / LLVM</text>
+
+  <!-- Step 2: Компиляция в Wasm -->
+  <g transform="translate(255, 25)">
+    <rect width="180" height="120" rx="6" fill="#ffffff" stroke="#1f2328" stroke-width="2"/>
+    <text x="90" y="32" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="14" font-weight="bold" fill="#000" text-anchor="middle">WebAssembly</text>
+    <line x1="20" y1="44" x2="160" y2="44" stroke="#d0d7de" stroke-width="1"/>
+    <text x="90" y="72" font-family="ui-monospace, monospace" font-size="13" font-weight="bold" fill="#0969da" text-anchor="middle">math.wasm</text>
+    <text x="90" y="95" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" fill="#1f2328" text-anchor="middle">Размер: ~62 байта</text>
+    <text x="90" y="118" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" fill="#59636e" text-anchor="middle">Бинарный байткод</text>
+  </g>
+
+  <!-- Стрелка 2 -->
+  <path d="M 440 85 L 490 85" stroke="#1f2328" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="465" y="75" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="10" fill="#59636e" text-anchor="middle">Сеть / Диск</text>
+
+  <!-- Step 3: Среда исполнения -->
+  <g transform="translate(500, 25)">
+    <rect width="160" height="120" rx="6" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1.5"/>
+    <text x="80" y="32" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="14" font-weight="bold" fill="#000" text-anchor="middle">Среда исполнения</text>
+    <line x1="15" y1="44" x2="145" y2="44" stroke="#eaeef2" stroke-width="1"/>
+    <text x="80" y="70" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" fill="#1f2328" text-anchor="middle">Браузер (V8, WebKit)</text>
+    <text x="80" y="92" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" fill="#1f2328" text-anchor="middle">или WASI / Node.js</text>
+    <text x="80" y="118" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" fill="#2da44e" font-weight="bold" text-anchor="middle">JIT-компиляция</text>
+  </g>
+
+  <!-- Стрелка 3 -->
+  <path d="M 665 85 L 705 85" stroke="#1f2328" stroke-width="2" marker-end="url(#arr)"/>
+
+  <!-- Step 4: Аппаратный CPU -->
+  <g transform="translate(715, 25)">
+    <rect width="125" height="120" rx="6" fill="#1f2328" stroke="#000" stroke-width="1.5"/>
+    <text x="62" y="32" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="13" font-weight="bold" fill="#fff" text-anchor="middle">Аппаратный CPU</text>
+    <line x1="15" y1="44" x2="110" y2="44" stroke="#444" stroke-width="1"/>
+    <text x="62" y="70" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" fill="#fff" text-anchor="middle">x86_64</text>
+    <text x="62" y="92" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" fill="#fff" text-anchor="middle">ARM64</text>
+    <text x="62" y="118" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" fill="#50fa7b" font-weight="bold" text-anchor="middle">95% скорости</text>
+  </g>
+</svg>

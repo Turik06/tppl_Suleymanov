@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <rect width="120" height="120" rx="20" fill="#cf222e"/>
+  <path d="M 45 95 L 56 60 L 45 60 L 52 40 L 78 40 L 72 52 L 62 52 L 56 70 L 68 70 L 64 80 L 52 80 L 45 95 Z" fill="#ffffff"/>
+  <text x="60" y="112" font-family="-apple-system, sans-serif" font-size="10" font-weight="bold" fill="#ffffff" text-anchor="middle">FLASH</text>
+</svg>

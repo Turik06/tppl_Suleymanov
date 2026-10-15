@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>WebAssembly: Доклад по стандарту курса ТППЛ</title>
+  
+  <!-- Reveal.js (Light theme) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/reset.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/reveal.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/theme/white.min.css" id="theme">
+  <!-- Highlight.js light theme (GitHub style) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+
+  <style>
+    :root {
+      --text-main: #1f2328;
+      --text-muted: #59636e;
+      --border-color: #d0d7de;
+      --bg-subtle: #f6f8fa;
+      --code-bg: #f6f8fa;
+      --accent: #0969da;
+    }
+
+    body {
+      background-color: #ffffff;
+    }
+
+    .reveal {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+      color: var(--text-main);
+      font-size: 26px;
+    }
+
+    .reveal h1, .reveal h2, .reveal h3 {
+      font-family: inherit;
+      color: #000000;
+      text-transform: none;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .reveal h1 { font-size: 2.1em; margin-bottom: 0.2em; }
+    .reveal h2 { 
+      font-size: 1.3em; 
+      margin-bottom: 0.4em; 
+      border-bottom: 1px solid var(--border-color); 
+      padding-bottom: 0.2em; 
+      text-align: left; 
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      text-align: left;
+      align-items: center;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+      text-align: left;
+    }
+
+    .fact-card {
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 12px 16px;
+      box-shadow: 0 1px 3px rgba(31, 35, 40, 0.04);
+    }
+
+    .fact-card h4 {
+      font-size: 0.85em;
+      font-weight: 600;
+      color: #000000;
+      margin: 0 0 5px 0;
+    }
+
+    .fact-card p, .fact-card ul {
+      font-size: 0.72em;
+      line-height: 1.45;
+      margin: 0;
+      color: var(--text-main);
+    }
+
+    .fact-card ul {
+      padding-left: 18px;
+    }
+
+    .fact-card li {
+      margin-bottom: 4px;
+    }
+
+    .metric-box {
+      border-left: 3px solid var(--accent);
+      background: var(--bg-subtle);
+      padding: 8px 12px;
+      margin: 8px 0;
+      font-size: 0.72em;
+    }
+
+    .metric-value {
+      font-size: 1.15em;
+      font-weight: bold;
+      color: #000000;
+      display: block;
+    }
+
+    .img-frame {
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: #ffffff;
+      padding: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+
+    .img-fluid {
+      width: 100%;
+      height: auto;
+      max-height: 230px;
+      object-fit: cover;
+      border-radius: 4px;
+      display: block;
+    }
+
+    .svg-container {
+      width: 100%;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 8px;
+      margin: 8px 0;
+    }
+
+    table.academic-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.64em;
+      line-height: 1.4;
+      margin-top: 10px;
+      text-align: left;
+    }
+
+    table.academic-table th {
+      border-top: 2px solid #000000;
+      border-bottom: 1px solid #000000;
+      padding: 8px 10px;
+      font-weight: 600;
+      color: #000000;
+      background: #ffffff;
+    }
+
+    table.academic-table td {
+      border-bottom: 1px solid var(--border-color);
+      padding: 8px 10px;
+      color: var(--text-main);
+    }
+
+    table.academic-table tr:last-child td {
+      border-bottom: 2px solid #000000;
+    }
+
+    pre {
+      box-shadow: none !important;
+      margin: 6px 0 !important;
+      border: 1px solid var(--border-color) !important;
+      border-radius: 6px !important;
+      background: var(--code-bg) !important;
+    }
+
+    pre code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
+      font-size: 0.62em !important;
+      line-height: 1.35 !important;
+      padding: 10px !important;
+      color: #1f2328 !important;
+      background: transparent !important;
+    }
+
+    .demo-container {
+      border: 1px solid var(--border-color);
+      background: var(--bg-subtle);
+      border-radius: 6px;
+      padding: 14px;
+      text-align: left;
+    }
+
+    .demo-input {
+      font-size: 0.85em;
+      padding: 6px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      width: 80px;
+    }
+
+    .demo-button {
+      font-size: 0.8em;
+      font-weight: 500;
+      padding: 6px 16px;
+      border-radius: 6px;
+      background-color: #2da44e;
+      color: #ffffff;
+      border: 1px solid rgba(27, 31, 36, 0.15);
+      cursor: pointer;
+    }
+
+    .demo-result {
+      margin-top: 10px;
+      padding: 8px 12px;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      font-family: ui-monospace, monospace;
+      font-size: 0.72em;
+    }
+  </style>
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- СЛАЙД 1: Титульный -->
+      <section style="text-align: left;">
+        <h1 style="margin-top: 80px; font-size: 2.4em;">WebAssembly (Wasm)</h1>
+        <p style="font-size: 1.05em; color: var(--text-muted); margin-bottom: 40px;">
+          Архитектура низкоуровневой виртуальной машины, анализ применения и перспективы
+        </p>
+        <aside class="notes">
+          Здравствуйте. Тема доклада — WebAssembly (Wasm): архитектура низкоуровневой виртуальной машины, анализ применения и перспективы.
+          В докладе разберем:
+          1. Понятие ассемблера и концепцию «виртуального ассемблера» Wasm.
+          2. Архитектурный конвейер от Си до кремния CPU.
+          3. Причины провала Flash, Google NaCl и asm.js.
+          4. Стандартизацию W3C в качестве 4-го языка веба.
+          5. Применение в браузере и на сервере.
+          6. Устройство линейной памяти, отсутствие GC и строгую типизацию.
+          7. Стековую модель и изоляцию «слеп и глух».
+          8. Пример компиляции через Clang и разбор байткода WAT.
+          9. Живое демо выполнения прямо на слайде.
+          10. Перспективы: WASI 0.2, Component Model, Wasm GC.
+          11. Сравнение с JavaScript, Docker и JVM.
+        </aside>
+      </section>
+
+      <!-- СЛАЙД 2: 1. Что такое ассемблер и WebAssembly -->
+      <section>
+        <h2>1. Что такое ассемблер и WebAssembly</h2>
+        
+        <div class="svg-container">
+          <img src="images/pipeline.svg" alt="Конвейер WebAssembly" style="width: 100%; height: auto; display: block;">
+        </div>
+
+        <div class="grid-3" style="margin-top: 8px;">
+          <div class="fact-card">
+            <h4>Классический ассемблер</h4>
+            <p>Низкоуровневый язык команд <strong>конкретного процессора</strong> (x86, ARM). Прямая работа с физическими регистрами CPU и памятью компьютера.</p>
+          </div>
+          <div class="fact-card">
+            <h4>WebAssembly — «Виртуальный ассемблер»</h4>
+            <p>Переносимый бинарный машинный код для <strong>абстрактной виртуальной машины</strong>. Независим от железа, выполняется везде с защитой памяти.</p>
+          </div>
+          <div class="fact-card">
+            <h4>Название: Web + Assembly</h4>
+            <p><strong>Web</strong> — безопасность и работа в любых браузерах. <strong>Assembly</strong> — машинный байткод с околонативной скоростью (~95% C++).</p>
+          </div>
+        </div>
+        <aside class="notes">
+          Пункт 1: Что такое ассемблер и WebAssembly, конвейер компиляции.
+          - Классический ассемблер: мнемоники конкретного процессора (x86, ARM), аппаратные регистры (EAX, R0), прямая память. Код x86 не запустится на ARM.
+          - WebAssembly: «виртуальный ассемблер». Бинарный код для абстрактной виртуальной машины. Платформенно-независим и аппаратно изолирован.
+          - Web + Assembly: Web — безопасность исполнения в среде хоста; Assembly — скорость (~95% от нативного Си). Это таргет компиляции системных языков.
+          Конвейер на примере 3D-игры (Doom 3 / Unity):
+          1. Исходник: физика и матрицы на C/C++/Rust. На JS писать нельзя — GC периодически замораживает поток на десятки мс.
+          2. Сборка: Clang с флагом --target=wasm32 транслирует код в опкоды Wasm.
+          3. Модуль math.wasm: всего 62 байта чистых инструкций.
+          4. Сеть: скачивается по HTTPS за доли секунды.
+          5. Рантайм: движок (V8, WebKit, Node.js) через JIT компилирует байткод под CPU пользователя.
+          6. Аппаратный CPU: прямое выполнение на 4 ГГц с 95% скорости Си (5% — цена проверки границ памяти).
+        </aside>
+      </section>
+
+      <!-- СЛАЙД 3: 1.1. Почему провалились предшественники -->
+      <section>
+        <h2>1.1. Почему провалились предшественники (1995–2013)</h2>
+        <div class="grid-2">
+          <div>
+            <div class="fact-card" style="margin-bottom: 8px;">
+              <h4>NPAPI-плагины: Flash, Java Applets, ActiveX</h4>
+              <ul>
+                <li><strong>Причина провала:</strong> отсутствие изоляции памяти, прямой доступ к ресурсам ОС, частые уязвимости безопасности.</li>
+                <li><strong>Отказ мобильных платформ:</strong> письмо Стива Джобса «Мысли о Flash» (2010) из-за сбоев и жора батареи. Закрыт в 2020 г.</li>
+              </ul>
+            </div>
+            <div class="fact-card" style="margin-bottom: 8px;">
+              <h4>Google Native Client (NaCl / PNaCl, 2011)</h4>
+              <ul>
+                <li><strong>Причина провала:</strong> проприетарная закрытость Google и привязка к x86. Другие вендоры (Mozilla, Apple) отказались внедрять монополию.</li>
+              </ul>
+            </div>
+            <div class="fact-card">
+              <h4>Перерождение: asm.js (Mozilla, 2013) ➔ Wasm</h4>
+              <ul>
+                <li>Компиляция C++ в строгое подмножество JS. Доказал идею, но уперся в парсинг 100-МБ текстовых файлов JS. <strong>Переродился в Wasm!</strong></li>
+              </ul>
+            </div>
+          </div>
+
+          <div style="text-align: center;">
+            <div class="img-frame" style="display: inline-block; padding: 20px; margin-top: 15px;">
+              <img src="images/flash_logo.svg" alt="Flash Player" style="max-height: 130px; width: auto; display: block; margin: 0 auto;">
+              <p style="font-size: 0.7em; color: var(--text-muted); margin: 10px 0 0 0;">Flash Player (1996–2020): закрыт из-за проблем безопасности</p>
+            </div>
+          </div>
+        </div>
+        <aside class="notes">
+          Причины провала предшественников:
+          1. NPAPI-плагины (Flash, ActiveX): внешние процессы с прямым доступом к Win32 API и физической памяти. Итог: постоянные критические уязвимости и краши браузеров. В 2010 г. Стив Джобс в письме «Мысли о Flash» запретил Flash на iPhone из-за дыр безопасности и пожирания батареи. В 2020 г. Flash был закрыт.
+          2. Google Native Client (NaCl, 2011 г.): давал нативную скорость, но провалился из-за монополии Google и жесткой привязки к x86. Apple и Mozilla отказались внедрять закрытый стандарт конкурента.
+          3. asm.js (Mozilla, 2013 г.): доказал компиляцию C++ в подмножество JS ((a+b)|0), но уперся в парсинг текстового JS: файлы по 100 МБ вешали движки браузера.
+          Вывод: индустрии требовался открытый бинарный стандарт от всех вендоров сразу.
+        </aside>
+      </section>
+
+      <!-- СЛАЙД 4: 1.2. Рождение стандарта WebAssembly -->
+      <section>
+        <h2>1.2. Рождение стандарта WebAssembly (2015–2019)</h2>
+        
+        <div class="grid-3" style="margin-top: 10px;">
+          <div class="fact-card">
+            <h4>2015: Альянс 4 гигантов</h4>
+            <p>Google (Chrome), Mozilla (Firefox), Apple (Safari) и Microsoft (Edge) впервые в истории объединились ради создания единого открытого стандарта после 20 лет браузерных войн.</p>
+          </div>
+          <div class="fact-card">
+            <h4>2017: Согласованный MVP</h4>
+            <p>Все 4 основных браузерных движка одновременно включили поддержку WebAssembly по умолчанию без необходимости активации флагов.</p>
+          </div>
+          <div class="fact-card">
+            <h4>2019: Официальный стандарт W3C</h4>
+            <p>Консорциум W3C официально утвердил WebAssembly в статусе <strong>4-го языка веба</strong> — наряду с HTML, CSS и JavaScript.</p>
+          </div>
+        </div>
+
+        <div class="metric-box" style="margin-top: 16px; text-align: left;">
+          <span class="metric-value">Ключевой итог эволюции:</span>
+          Отказавшись от проприетарных плагинов и текстовых хаков, индустрия создала открытый бинарный формат с детерминированным исполнением и защитой памяти на уровне команд виртуальной машины.
+        </div>
+        <aside class="notes">
+          Рождение стандарта WebAssembly:
+          1. 2015: Альянс 4 гигантов. Google, Mozilla, Apple и Microsoft объединились в W3C ради единого открытого стандарта после 20 лет браузерных войн.
+          2. 2017: Согласованный релиз MVP. Все 4 движка одновременно включили Wasm по умолчанию без флагов.
+          3. 2019: Официальный стандарт W3C. WebAssembly утвержден 4-м языком веба (наряду с HTML, CSS и JavaScript).
+          Итог: открытый бинарный байткод с изоляцией на уровне инструкций виртуальной машины.
+        </aside>
+      </section>
+
+      <!-- СЛАЙД 5: 2. Назначение и сфера применения -->
+      <section>
+        <h2>2. Назначение и сфера применения</h2>
+        <div class="grid-2">
+          <div class="fact-card">
+            <h4>В браузере (Client-side)</h4>
+            <ul>
+              <li><strong>Сложные десктопные веб-сервисы:</strong>
+                <ul>
+                  <li><strong>Figma:</strong> ядро векторного рендеринга на C++.</li>
+                  <li><strong>Adobe Photoshop Web:</strong> перенос 30 млн строк legacy-кода C++ в браузер.</li>
+                  <li><strong>AutoCAD Web:</strong> нативная геометрия в браузере.</li>
+                </ul>
+              </li>
+              <li><strong>Медиа-кодеки:</strong> FFmpeg.wasm — конвертация и монтаж видео прямо на клиенте.</li>
+              <li><strong>Локальный AI:</strong> инференс нейросетей через ONNX / Transformers.js.</li>
+            </ul>
+          </div>
+
+          <div class="fact-card">
+            <h4>Вне браузера (Serverless & Edge)</h4>
+            <ul>
+              <li><strong>Интерфейс WASI:</strong> стандартизация работы с ОС (файлы, сеть, системные часы).</li>
+              <li><strong>Облачные платформы:</strong> Cloudflare Workers, Fastly Compute@Edge.
+                <ul>
+                  <li>Холодный старт: <strong>микросекунды</strong> (&lt; 1 мс).</li>
+                  <li>Потребление RAM: килобайты вместо сотен мегабайт.</li>
+                </ul>
+              </li>
+              <li><strong>Безопасные плагины:</strong> Envoy Proxy, редактор Zed, Shopify.</li>
+              <li><strong>Блокчейн:</strong> смарт-контракты в сетях NEAR и Polkadot (Substrate).</li>
+            </ul>
+          </div>
+        </div>
+        <aside class="notes">
+          Пункт 2: Назначение и сфера применения (два технологических мира: браузер и облака).
+          Мир 1: В браузере (Client-side) — там, где JS упирается в потолок:
+          - Figma: перенос ядра C++ в Wasm — секрет плавной работы в 60 FPS при зуме тысяч векторных слоев.
+          - Adobe Photoshop Web: 30 млн строк кода C++, накопленных за 35 лет, скомпилированы в браузер без переписывания на JS.
+          - AutoCAD Web: инженеры открывают тяжелые чертежи DWG с нативной геометрией.
+          - FFmpeg.wasm: локальный монтаж и сжатие видео прямо на ноутбуке без отправки гигабайт на сервер.
+          - Локальный AI: инференс нейросетей через ONNX Runtime в браузере.
+          Мир 2: Вне браузера (Serverless и Edge через интерфейс WASI):
+          - Cloudflare Workers и Fastly: холодный старт за микросекунды (&lt; 1 мс), потребление памяти — килобайты вместо 300 МБ у контейнеров Docker.
+          - Безопасные плагины в Envoy Proxy, редакторе Zed, платформе Shopify: сбойный плагин не может уронить систему.
+          - Блокчейн: смарт-контракты в сетях NEAR и Polkadot.
+        </aside>
+      </section>
+
+      <!-- СЛАЙД 6: 2.1. Примеры в индустрии -->
+      <section>
+        <h2>2.1. Примеры в индустрии</h2>
+        <div class="grid-2">
+          <div class="img-frame">
+            <img src="images/game_fps.jpg" alt="3D-игры в браузере" class="img-fluid">
+            <div style="padding: 6px 0 0 0;">
+              <strong style="font-size: 0.8em;">3D-движки и игры прямо во вкладке</strong>
+              <p style="font-size: 0.68em; color: var(--text-muted); margin: 2px 0 0 0;">
+                Порты id Tech (Doom 3, Quake), Unreal Engine, Unity: C++ код компилируется в Wasm + WebGL/WebGPU. <strong>60 кадров/с без установки!</strong>
+              </p>
+            </div>
+          </div>
+
+          <div class="img-frame">
+            <img src="images/cad_interface.png" alt="САПР в браузере" class="img-fluid">
+            <div style="padding: 6px 0 0 0;">
+              <strong style="font-size: 0.8em;">Профессиональные САПР-системы и Figma</strong>
+              <p style="font-size: 0.68em; color: var(--text-muted); margin: 2px 0 0 0;">
+                Вычисления триангуляции сеток, расчеты сопротивления материалов и рендеринг векторных сплайнов без зависания интерфейса браузера.
+              </p>
+            </div>
+          </div>
+        </div>
+        <aside class="notes">
+          Примеры в индустрии:
+          Слева: 3D-движки и игры прямо во вкладке. Порты id Tech 4 (Doom 3, Quake 3), Unreal Engine и Unity.
+          Разделение труда: Wasm берет тяжелую математику (физику, коллизии, матрицы, скелетную анимацию), а готовые буферы через JS передает графическому API WebGL или WebGPU. Результат — стабильные 60 FPS прямо во вкладке без установки плагинов и лаунчеров!
+          Справа: САПР и тяжелый софт. AutoCAD Web и Figma выполняют триангуляцию поверхностей, метод конечных элементов и сплайны Безье без единого фриза интерфейса.
+        </aside>
+      </section>
+
+      <!-- СЛАЙД 7: 3. Управление памятью и типизация -->
+      <section>
+        <h2>3. Управление памятью и типизация</h2>
+        
+        <div class="svg-container">
+          <img src="images/memory_stack.svg" alt="Память и стек Wasm" style="width: 100%; height: auto; display: block;">
+        </div>
+
+        <div class="grid-3" style="margin-top: 8px;">
+          <div class="fact-card">
+            <h4>Линейная память (Linear Memory)</h4>
+            <p>Один непрерывный массив байт (<code>ArrayBuffer</code>). Изолирован от ОС. Попытка выхода за пределы вызывает аппаратный <strong>Trap</strong>.</p>
+          </div>
+          <div class="fact-card">
+            <h4>Управление памятью: Без GC</h4>
+            <p>В ядре базового Wasm <strong>нет сборщика мусора</strong>! Управление ручное: в C через <code>malloc/free</code>, в Rust через <code>borrow-checker</code>.</p>
+          </div>
+          <div class="fact-card">
+            <h4>Всего 4 числовых типа</h4>
+            <p>Строгая статическая типизация: <code>i32</code>, <code>i64</code>, <code>f32</code>, <code>f64</code>. Нет встроенных типов строк или объектов (только сырые байты).</p>
+          </div>
+        </div>
+        <aside class="notes">
+          Управление памятью и типизация (3 принципа):
+          1. Линейная память: сплошной байтовый массив (ArrayBuffer). Модуль изолирован от памяти ОС. При выходе за границы выделенного массива виртуальная машина вызывает аппаратный сбой (Trap), браузер не падает.
+          2. Без сборщика мусора (No GC): памятью управляет сам язык (malloc/free в Си, borrow checker в Rust). Нет пауз на сборку мусора — скорость предсказуема и стабильна.
+          3. Строго 4 числовых типа: i32, i64, f32, f64. Строк и объектов нет — текст передается парой чисел: смещение в памяти и длина в байтах.
+        </aside>
+      </section>
+
+      <!-- СЛАЙД 8: 3.1. Архитектурные особенности виртуальной машины -->
+      <section>
+        <h2>3.1. Архитектурные особенности виртуальной машины</h2>
+        <div class="grid-3">
+          <div class="fact-card">
+            <h4>1. Стековая машина (Без регистров)</h4>
+            <p>В отличие от процессоров x86/ARM, в виртуальной машине Wasm нет регистров общего назначения. Все команды оперируют вершиной стека (LIFO):</p>
+            <pre><code class="language-wat">local.get $a  ;; положить 'a' в стек
+local.get $b  ;; положить 'b' в стек
+i32.add       ;; сложить: забрать a, b -> положить (a + b)</code></pre>
+          </div>
+
+          <div class="fact-card">
+            <h4>2. Принцип «Слеп и глух»</h4>
+            <p>Модуль тотально изолирован: он не имеет прямого доступа ни к экрану, ни к DOM, ни к диску или сети. Взаимодействие возможно <strong>только через явные функции-импорты хоста</strong> (Capability-based).</p>
+          </div>
+
+          <div class="fact-card">
+            <h4>3. Двойственный формат (.wasm / .wat)</h4>
+            <p><strong>.wasm</strong> — бинарный компактный байткод для машин.<br><br><strong>.wat</strong> — текстовый человекочитаемый формат на S-выражениях (Lisp-синтаксис) для отладки и дизассемблирования.</p>
+          </div>
+        </div>
+        <aside class="notes">
+          Архитектурные особенности виртуальной машины:
+          1. Стековая машина (LIFO): нет регистров. Инструкции local.get $a и local.get $b кладут операнды на вершину стопки, i32.add забирает их и кладет сумму. Каждая команда занимает всего 1 байт — файл получается максимально компактным.
+          2. Изоляция «слеп и глух»: модуль не имеет прямого доступа к DOM, диску или сети. Взаимодействие только через функции-импорты, явно переданные хостом (Capability-based).
+          3. Двойной формат: .wasm — сжатый бинарный байткод для машины; .wat — читаемый текст на S-выражениях для человека.
+        </aside>
+      </section>
+
+      <!-- СЛАЙД 9: 4. Пример использования и компиляция -->
+      <section>
+        <h2>4. Пример использования и компиляция</h2>
+        <div class="grid-2">
+          <div>
+            <div class="fact-card" style="margin-bottom: 8px;">
+              <h4>1. Исходник на языке C (math.c)</h4>
+              <pre><code class="language-c">// Рекурсивное вычисление факториала
+int factorial(int n) {
+    if (n <= 1) return 1;
+    return n * factorial(n - 1);
+}</code></pre>
+            </div>
+            <div class="fact-card">
+              <h4>2. Команда сборки через Clang / LLVM</h4>
+              <pre><code class="language-bash"># Сборка через LLVM/Clang в 32-битный Wasm
+clang --target=wasm32 -O3 -nostdlib \
+  -Wl,--no-entry -Wl,--export-all \
+  -o math.wasm math.c</code></pre>
+            </div>
+          </div>
+
+          <div class="fact-card">
+            <h4>3. Байткод в текстовом формате WAT (math.wat)</h4>
+            <pre><code class="language-wat">(module
+  (func $factorial (param $n i32) (result i32)
+    local.get $n      ;; положить n в стек
+    i32.const 1       ;; положить 1 в стек
+    i32.le_s          ;; проверка: n <= 1 ?
+    if (result i32)   ;; если да (базовый случай):
+      i32.const 1     ;;   вернуть 1
+    else              ;; иначе (рекурсия):
+      local.get $n    ;;   положить n
+      local.get $n    ;;   положить n
+      i32.const 1     ;;   положить 1
+      i32.sub         ;;   вычесть (n - 1)
+      call $factorial ;;   рекурсивный вызов
+      i32.mul         ;;   умножить n * fact(n-1)
+    end)
+  (export "factorial" (func $factorial)))</code></pre>
+          </div>
+        </div>
+        <aside class="notes">
+          Пункт 4: Пример использования и компиляция.
+          1. Исходник math.c: рекурсивный факториал (n &lt;= 1 -&gt; 1, иначе n * fact(n-1)).
+          2. Разбор флагов Clang:
+          - target=wasm32: генерация 32-битного байткода Wasm.
+          - O3: максимальная оптимизация.
+          - nostdlib: отключение libc (исключает лишний код).
+          - Wl,--no-entry: сборка библиотеки без main().
+          - Wl,--export-all: экспорт функции наружу для вызова из JS.
+          Результат: готовый модуль весит всего 62 байта!
+          3. Байткод WAT: наглядно видна стековая логика — local.get $n, i32.const 1, сравнение i32.le_s, ветвление if...else, вычитание i32.sub, рекурсивный call, перемножение i32.mul.
+        </aside>
+      </section>
+
+      <!-- СЛАЙД 10: 4.1. Практическая демонстрация -->
+      <section>
+        <h2>4.1. Практическая демонстрация</h2>
+        <div class="grid-2">
+          <div>
+            <div class="fact-card" style="margin-bottom: 8px;">
+              <h4>1. Запуск из JavaScript (API браузера)</h4>
+              <pre><code class="language-javascript">// Загрузка и вызов модуля в браузере
+const resp = await fetch('math.wasm');
+const { instance } = await WebAssembly.instantiate(
+    await resp.arrayBuffer()
+);
+const res = instance.exports.factorial(10);
+console.log(res); // 3628800</code></pre>
+            </div>
+            <div class="fact-card">
+              <h4>2. Консольный запуск в терминале (Node.js)</h4>
+              <pre><code class="language-bash"># Запуск через Node.js в терминале Linux
+$ node presentation/demo/run_node.js
+[Wasm Runtime] Загрузка math.wasm (62 байт)
+ > 10! = 3628800 (выполнено в Wasm VM)</code></pre>
+            </div>
+          </div>
+
+          <div>
+            <div class="demo-container">
+              <h4 style="font-size: 0.9em; margin: 0 0 6px 0;">Расчет в реальном Wasm:</h4>
+              <p style="font-size: 0.7em; color: var(--text-muted); margin: 0 0 10px 0;">
+                В этот слайд внедрен настоящий 62-байтный модуль <code>math.wasm</code>:
+              </p>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="number" id="demoN" class="demo-input" value="10" min="1" max="12">
+                <button class="demo-button" onclick="runSlideDemo()">Посчитать n!</button>
+              </div>
+              <div id="demoOutput" class="demo-result">
+                Нажмите кнопку для выполнения...
+              </div>
+            </div>
+          </div>
+        </div>
+        <aside class="notes">
+          Пункт 4.1: Практическая демонстрация.
+          Слева: стандартная интеграция WebAssembly.instantiate() в браузере и скрипт run_node.js для терминала Linux.
+          Справа: интерактивное демо на слайде с реальным модулем math.wasm.
+          [Нажимаем кнопку «Посчитать n!»]
+          Результат: 10! = 3 628 800 за доли микросекунды (~0.1 мкс).
+          Техническая деталь: ввод ограничен диапазоном 1..12, так как 12! = 479 млн укладывается в знаковый 32-битный тип i32. Факториал 13! вызвал бы переполнение типа, что демонстрирует строгую 32-битную типизацию Wasm.
+        </aside>
+      </section>
+
+      <!-- СЛАЙД 11: 5. Перспективы развития стандартов -->
+      <section>
+        <h2>5. Перспективы развития стандартов</h2>
+        <div class="grid-2">
+          <div class="fact-card">
+            <h4>1. WASI 0.2 (Preview 2)</h4>
+            <p>Стандартизированный POSIX-подобный системный слой с моделью <strong>Capability-based Security</strong>: модуль физически изолирован и получает доступ только к явно выданным файлам и сокетам.</p>
+          </div>
+          <div class="fact-card">
+            <h4>2. Component Model & WIT</h4>
+            <p>Бесшовная интеграция языков: модуль на <strong>Rust</strong> напрямую взаимодействует с кодом на <strong>Go</strong> или <strong>Python</strong> без написания сложного C FFI.</p>
+          </div>
+          <div class="fact-card">
+            <h4>3. Спецификация Wasm GC</h4>
+            <p>Финализирована в 2023–2024 гг. Дает языкам со сборщиком мусора (Dart, Kotlin, Java) нативный доступ к GC браузера. (Пример: <strong>Flutter Web</strong> на Wasm стал работать в 2–3 раза плавнее!).</p>
+          </div>
+          <div class="fact-card">
+            <h4>4. Векторизация SIMD и Потоки</h4>
+            <p>128-битные инструкции и многопоточность на всех ядрах CPU для локального инференса нейросетей прямо на устройстве пользователя.</p>
+          </div>
+        </div>
+        <aside class="notes">
+          Пункт 5: Перспективы развития стандартов:
+          1. WASI 0.2: серверный запуск со строгой выдачей прав (только разрешенные папки и сокеты).
+          2. Component Model: прямое взаимодействие модулей на Rust, Go, Python без написания C FFI.
+          3. Wasm GC: нативный доступ к сборщику мусора браузера для языков со сборщиком (Dart, Kotlin, Java). Flutter Web стал в 2–3 раза плавнее.
+          4. SIMD и потоки: 128-битные векторные инструкции и параллелизм для локальных нейросетей на процессоре клиента.
+        </aside>
+      </section>
+
+      <!-- СЛАЙД 12: 6. Альтернативы по областям применения -->
+      <section>
+        <h2>6. Альтернативы по областям применения</h2>
+        
+        <div class="grid-3" style="margin-top: 10px;">
+          <!-- Область 1: Браузер -->
+          <div class="fact-card">
+            <div style="font-size: 0.65em; font-weight: bold; color: var(--accent); text-transform: uppercase; margin-bottom: 4px;">Область: Клиентский веб</div>
+            <h4 style="font-size: 0.9em; margin-bottom: 8px;">Wasm vs JavaScript</h4>
+            <ul style="font-size: 0.7em;">
+              <li><strong>Контекст:</strong> логика и вычисления в браузере.</li>
+              <li><strong>JavaScript:</strong> динамический, GC (паузы), лучший выбор для UI, кнопок и работы с DOM.</li>
+              <li><strong>WebAssembly:</strong> статический, без GC, ~95% скорости C++ для 3D, физики и видео.</li>
+              <li><strong>Итог:</strong> <em>Симбиоз</em> (JS для интерфейса, Wasm для вычислений).</li>
+            </ul>
+          </div>
+
+          <!-- Область 2: Сервер и Облака -->
+          <div class="fact-card">
+            <div style="font-size: 0.65em; font-weight: bold; color: #2da44e; text-transform: uppercase; margin-bottom: 4px;">Область: Облака и Serverless</div>
+            <h4 style="font-size: 0.9em; margin-bottom: 8px;">Wasm (WASI) vs Docker</h4>
+            <ul style="font-size: 0.7em;">
+              <li><strong>Контекст:</strong> запуск микросервисов по клику.</li>
+              <li><strong>Docker:</strong> тащит ОС Linux (100–500 МБ), старт 200–500 мс (namespaces ядра).</li>
+              <li><strong>WebAssembly:</strong> чистый бинарник (килобайты), старт &lt; 1 мс (микросекунды).</li>
+              <li><strong>Итог:</strong> <em>Конкуренция</em> в бессерверных и Edge-средах.</li>
+            </ul>
+          </div>
+
+          <!-- Область 3: Виртуальные машины -->
+          <div class="fact-card">
+            <div style="font-size: 0.65em; font-weight: bold; color: #8250df; text-transform: uppercase; margin-bottom: 4px;">Область: Переносимый байткод</div>
+            <h4 style="font-size: 0.9em; margin-bottom: 8px;">Wasm vs JVM (Java)</h4>
+            <ul style="font-size: 0.7em;">
+              <li><strong>Контекст:</strong> Концепция «Написано однажды — работает везде».</li>
+              <li><strong>JVM:</strong> жестко навязала объектную модель Java, байткод JVM и встроенный GC.</li>
+              <li><strong>WebAssembly:</strong> нейтрален к языкам (C, Rust, Go), ручное управление памятью.</li>
+              <li><strong>Итог:</strong> <em>Альтернатива</em> традиционным объектным VM.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="metric-box" style="margin-top: 14px; text-align: left;">
+          <span class="metric-value">Вывод по альтернативам:</span>
+          WebAssembly сравнивается в разных плоскостях: в браузере он дополняет JavaScript, на сервере выигрывает у Docker по скорости старта, а в переносимости предлагает независимость от Java.
+        </div>
+
+        <aside class="notes">
+          Пункт 6: Альтернативы по областям применения:
+          1. В браузере (Wasm vs JS): симбиоз. JS для DOM и интерфейса, Wasm для тяжелых вычислений и графики.
+          2. В облаках (Wasm vs Docker): прямая конкуренция в Serverless. Docker тащит 300 МБ Linux и стартует сотни мс; Wasm весит килобайты и стартует за доли мс.
+          3. В переносимом байткоде (Wasm vs JVM): концепция «Написано однажды — работает везде». JVM навязала Java и свой GC. Wasm нейтрален и исполняет C, Rust, Go без привязки к ООП.
+          Итог: Wasm дополняет JS, конкурирует с Docker и предлагает независимую альтернативу JVM.
+        </aside>
+      </section>
+
+      <!-- СЛАЙД 13: Заключение -->
+      <section style="text-align: center;">
+        <h1 style="font-size: 2.5em; margin-top: 140px;">Спасибо за внимание!</h1>
+        <aside class="notes">
+          Краткий итог: WebAssembly стал фундаментальным стандартом открытой, переносимой и безопасной виртуальной машины для браузеров и серверов.
+          Доклад окончен. Спасибо за внимание! Готов ответить на ваши вопросы.
+        </aside>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- Reveal.js & Plugins via CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/reveal.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/plugin/notes/notes.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.1.0/plugin/highlight/highlight.min.js"></script>
+
+  <script>
+    Reveal.initialize({
+      hash: true,
+      slideNumber: 'c/t',
+      transition: 'none',
+      plugins: [ RevealHighlight, RevealNotes ]
+    });
+
+    const wasmBase64 = "AGFzbQEAAAABBgFgAX8BfwMCAQAHDQEJZmFjdG9yaWFsAAAKGQEXACAAQQFIBH9BAQUgACAAQQFrEABsCws=";
+    let wasmInstance = null;
+
+    async function loadEmbeddedWasm() {
+      try {
+        const binary = atob(wasmBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        const { instance } = await WebAssembly.instantiate(bytes);
+        wasmInstance = instance;
+      } catch (e) {
+        console.error("Ошибка загрузки Wasm модуля:", e);
+      }
+    }
+
+    loadEmbeddedWasm();
+
+    function runSlideDemo() {
+      const input = document.getElementById('demoN');
+      const output = document.getElementById('demoOutput');
+      const n = parseInt(input.value, 10);
+
+      if (isNaN(n) || n < 1 || n > 12) {
+        output.innerHTML = "<span style='color: #cf222e;'>Ошибка: число от 1 до 12</span>";
+        return;
+      }
+
+      if (!wasmInstance) {
+        output.innerHTML = "<span style='color: #cf222e;'>Модуль Wasm загружается...</span>";
+        return;
+      }
+
+      const t0 = performance.now();
+      const res = wasmInstance.exports.factorial(n);
+      const t1 = performance.now();
+      const elapsed = ((t1 - t0) * 1000).toFixed(2);
+
+      output.innerHTML = `
+        <strong>${n}! = ${res.toLocaleString()}</strong><br>
+        <span style="color: #59636e; font-size: 0.9em;">Время вызова Wasm: ~${elapsed} мкс</span>
+      `;
+    }
+  </script>
+</body>
+</html>
