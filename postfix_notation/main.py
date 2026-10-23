@@ -56,6 +56,10 @@ def calc_div(x: int | float, y: int | float) -> int | float:
     if y == 0:
         raise ZeroDivisionError("Деление на ноль невозможно.")
     return to_int_if_whole(x / y)
+    
+def calc_pow(x: int | float, y: int | float) -> int | float:
+    return to_int_if_whole(x ** y)
+
 
 
 def calc_tilde(stack: list[int | float]) -> list[int | float]:
@@ -79,6 +83,7 @@ BINARY_OPERATIONS = {
     "-": calc_sub,
     "*": calc_mul,
     "/": calc_div,
+    "!": calc_pow,
 }
 
 
@@ -95,7 +100,7 @@ def evaluate_expression(expression: str, verbose: bool = True) -> int | float:
 
     for step, token in enumerate(tokens, start=1):
         match token:
-            case "+" | "-" | "*" | "/":
+            case "+" | "-" | "*" | "/" | "!" :
                 if len(stack) < 2:
                     raise ValueError(f"Операция '{token}' требует не менее двух операндов.")
                 right = stack.pop()
